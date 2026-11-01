@@ -1,0 +1,15 @@
+[Unit]
+Description=TetherControl Linux Input Client
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStartPre=/sbin/modprobe uinput
+ExecStart=/usr/local/bin/tether-control client
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target
+

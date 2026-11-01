@@ -1,0 +1,10 @@
+# Allow members of the 'input' group to create virtual input devices via /dev/uinput
+# Install on Linux:
+#   sudo cp scripts/99-tether-uinput.rules /etc/udev/rules.d/
+#   echo "uinput" | sudo tee /etc/modules-load.d/uinput.conf
+#   sudo modprobe uinput
+#   sudo usermod -aG input $USER
+#   sudo udevadm control --reload-rules && sudo udevadm trigger
+#   (log out and back in for group membership to apply)
+KERNEL=="uinput", SUBSYSTEM=="misc", MODE="0660", GROUP="input", OPTIONS+="static_node=uinput"
+
