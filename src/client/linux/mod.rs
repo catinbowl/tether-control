@@ -179,13 +179,24 @@ pub fn run_client(args: ClientArgs) -> Result<()> {
         detect_physical_display(args.width, args.height, args.refresh)?;
     let mut hub = VirtualInputHub::new(current_display.width, current_display.height)?;
 
-    let bind_addr = format!("{}:{}", args.bind, args.port);
-    let listener = TcpListener::bind(&bind_addr)
-        .with_context(|| format!("Failed to bind TCP server on {}", bind_addr))?;
+    let listener = if args.bind == "0.0.0.0" {
+        // Try dual-stack [::]:port first so both IPv4 and IPv6 work, falling back to 0.0.0.0:port
+        TcpListener::bind(format!("[::]:{}", args.port))
+            .or_else(|_| TcpListener::bind(format!("0.0.0.0:{}", args.port)))
+            .with_context(|| format!("Failed to bind TCP server on port {}", args.port))?
+    } else {
+        TcpListener::bind(format!("{}:{}", args.bind, args.port))
+            .with_context(|| format!("Failed to bind TCP server on {}:{}", args.bind, args.port))?
+    };
+
+    let local_addr = listener
+        .local_addr()
+        .map(|a| a.to_string())
+        .unwrap_or_else(|_| format!("{}:{}", args.bind, args.port));
 
     info!(
         "TetherControl Linux client '{}' (id={:08x}) listening on {}",
-        hostname, client_id, bind_addr
+        hostname, client_id, local_addr
     );
     info!(
         "Physical display: {}x{} @ {}Hz",

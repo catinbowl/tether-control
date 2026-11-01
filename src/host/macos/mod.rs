@@ -25,6 +25,7 @@ use tracing::{debug, info, warn};
 #[derive(Debug, Clone)]
 enum TargetMode {
     Auto,
+    PinnedClient(DiscoveredClient),
     PinnedAddr(String),
     Paused,
 }
@@ -114,12 +115,15 @@ fn run_active_session(
         let _ = ui_tx.send(UiEvent::Connecting {
             target: addr.to_string(),
         });
+        info!("Attempting TCP connection to {}…", addr);
         match TcpStream::connect_timeout(addr, Duration::from_secs(3)) {
             Ok(s) => {
+                info!("TCP connection established with {}", addr);
                 connected_stream = Some((s, *addr));
                 break;
             }
             Err(e) => {
+                warn!("TCP connect to {} failed: {}", addr, e);
                 last_err = format!("{}: {}", addr, e);
             }
         }
@@ -321,9 +325,7 @@ fn spawn_connection_manager(
                             mode = TargetMode::PinnedAddr(target);
                         }
                         NetCommand::ConnectDiscovered(client) => {
-                            if let Some(addr) = client.preferred_addr() {
-                                mode = TargetMode::PinnedAddr(addr.to_string());
-                            }
+                            mode = TargetMode::PinnedClient(client);
                         }
                         NetCommand::EnableAutoConnect => {
                             mode = TargetMode::Auto;
@@ -345,6 +347,17 @@ fn spawn_connection_manager(
                             None
                         }
                     },
+                    TargetMode::PinnedClient(client) => {
+                        let addrs = if let Some(latest) = discovered.iter().find(|d| {
+                            d.fullname == client.fullname
+                                || (d.client_id.is_some() && d.client_id == client.client_id)
+                        }) {
+                            latest.addrs.clone()
+                        } else {
+                            client.addrs.clone()
+                        };
+                        Some(addrs)
+                    }
                     TargetMode::Auto => discovered.first().map(|c| c.addrs.clone()),
                 };
 
@@ -366,9 +379,11 @@ fn spawn_connection_manager(
 
                 match exit {
                     SessionExit::NetworkLost(reason) => {
-                        warn!("Connection lost ({}); unregistering virtual display", reason);
-                        let _ = ui_tx.send(UiEvent::Disconnected { reason: None });
-                        thread::sleep(Duration::from_millis(1200));
+                        warn!("Connection attempt failed or lost: {}", reason);
+                        let _ = ui_tx.send(UiEvent::Disconnected {
+                            reason: Some(reason),
+                        });
+                        thread::sleep(Duration::from_millis(2500));
                     }
                     SessionExit::AuthFailed(reason) => {
                         warn!("{}", reason);
@@ -384,9 +399,7 @@ fn spawn_connection_manager(
                         }
                         NetCommand::ConnectDiscovered(client) => {
                             let _ = ui_tx.send(UiEvent::Disconnected { reason: None });
-                            if let Some(addr) = client.preferred_addr() {
-                                mode = TargetMode::PinnedAddr(addr.to_string());
-                            }
+                            mode = TargetMode::PinnedClient(client);
                         }
                         NetCommand::EnableAutoConnect => {
                             mode = TargetMode::Auto;
@@ -395,7 +408,7 @@ fn spawn_connection_manager(
                         NetCommand::Disconnect => {
                             mode = TargetMode::Paused;
                             let _ = ui_tx.send(UiEvent::Disconnected {
-                                reason: Some("Disconnected".into()),
+                                reason: Some("Disconnected by user".into()),
                             });
                         }
                         NetCommand::Shutdown => return,

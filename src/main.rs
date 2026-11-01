@@ -1,7 +1,46 @@
 use anyhow::Result;
 use clap::{Args, Parser, Subcommand};
+use std::fs::{self, OpenOptions};
+use std::io;
+use std::sync::{Arc, Mutex};
+use tether_control::log_file_path;
 use tether_control::protocol::DEFAULT_PORT;
 use tracing_subscriber::EnvFilter;
+
+#[derive(Clone)]
+struct DualWriter {
+    file: Option<Arc<Mutex<fs::File>>>,
+}
+
+impl io::Write for DualWriter {
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        let _ = io::stdout().write(buf);
+        if let Some(ref f_lock) = self.file
+            && let Ok(mut f) = f_lock.lock()
+        {
+            let _ = io::Write::write_all(&mut *f, buf);
+        }
+        Ok(buf.len())
+    }
+
+    fn flush(&mut self) -> io::Result<()> {
+        let _ = io::stdout().flush();
+        if let Some(ref f_lock) = self.file
+            && let Ok(mut f) = f_lock.lock()
+        {
+            let _ = io::Write::flush(&mut *f);
+        }
+        Ok(())
+    }
+}
+
+impl<'a> tracing_subscriber::fmt::MakeWriter<'a> for DualWriter {
+    type Writer = DualWriter;
+
+    fn make_writer(&'a self) -> Self::Writer {
+        self.clone()
+    }
+}
 
 #[derive(Parser, Debug)]
 #[command(
@@ -92,13 +131,30 @@ impl Default for ClientCliArgs {
 }
 
 fn init_logging() {
+    let log_path = log_file_path();
+    if let Some(parent) = log_path.parent() {
+        let _ = fs::create_dir_all(parent);
+    }
+    let file = OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(&log_path)
+        .ok()
+        .map(|f| Arc::new(Mutex::new(f)));
+
     let filter = EnvFilter::try_from_default_env()
         .unwrap_or_else(|_| EnvFilter::new("tether_control=info,info"));
+
+    let writer = DualWriter { file };
+
     tracing_subscriber::fmt()
         .with_env_filter(filter)
+        .with_writer(writer)
         .with_target(false)
         .compact()
         .init();
+
+    tracing::info!("TetherControl initialized. Log file: {}", log_path.display());
 }
 
 fn main() -> Result<()> {

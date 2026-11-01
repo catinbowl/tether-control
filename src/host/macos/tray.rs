@@ -63,6 +63,10 @@ enum ConnectionPhase {
         refresh_hz: u16,
         display_id: Option<u32>,
     },
+    Failed {
+        target: String,
+        reason: String,
+    },
     Paused(Option<String>),
 }
 
@@ -151,7 +155,8 @@ define_class!(
                     return;
                 }
                 let client = st.discovered[idx as usize].clone();
-                st.phase = ConnectionPhase::Connecting(client.hostname.clone());
+                let label = client.display_label();
+                st.phase = ConnectionPhase::Connecting(label);
                 st.menu_dirty = true;
                 let tx = st.net_tx.clone();
                 st.rebuild_menu_and_icon(self);
@@ -202,6 +207,14 @@ define_class!(
                 st.menu_dirty = true;
                 st.rebuild_menu_and_icon(self);
             }
+        }
+
+        #[unsafe(method(onOpenLogs:))]
+        fn on_open_logs(&self, _sender: &NSMenuItem) {
+            let log_path = crate::log_file_path();
+            let path_str = log_path.to_string_lossy();
+            let file_url_str = format!("file://{}", path_str);
+            open_system_url(&file_url_str);
         }
 
         #[unsafe(method(onQuit:))]
@@ -295,11 +308,19 @@ impl TrayState {
                 }
                 UiEvent::Disconnected { reason } => {
                     self.teardown_virtual_display();
-                    if !matches!(self.phase, ConnectionPhase::Paused(_)) {
-                        self.phase = match reason {
-                            Some(r) => ConnectionPhase::Paused(Some(r)),
-                            None => ConnectionPhase::Searching,
+                    if let Some(r) = reason {
+                        let target = match &self.phase {
+                            ConnectionPhase::Connecting(t) => t.clone(),
+                            ConnectionPhase::Connected { addr, .. } => addr.clone(),
+                            ConnectionPhase::Failed { target, .. } => target.clone(),
+                            _ => String::from("client"),
                         };
+                        self.phase = ConnectionPhase::Failed {
+                            target,
+                            reason: r,
+                        };
+                    } else if !matches!(self.phase, ConnectionPhase::Paused(_)) {
+                        self.phase = ConnectionPhase::Searching;
                     }
                 }
                 UiEvent::DiscoveredListChanged(list) => {
@@ -381,10 +402,26 @@ impl TrayState {
                 "Connected: {} ({}×{} @ {}Hz)",
                 hostname, width, height, refresh_hz
             ),
+            ConnectionPhase::Failed { target, reason } => {
+                format!("Status: Failed to connect to {} ({})", target, reason)
+            }
             ConnectionPhase::Paused(Some(reason)) => format!("Status: {}", reason),
             ConnectionPhase::Paused(None) => "Status: Disconnected".to_string(),
         };
         menu.addItem(&make_info_item(self.mtm, &status_text));
+
+        if let ConnectionPhase::Failed { reason, .. } = &self.phase
+            && (reason.contains("Connection refused") || reason.contains("os error 61"))
+        {
+            menu.addItem(&make_info_item(
+                self.mtm,
+                "  💡 Check 'tether-control client' is running on Linux",
+            ));
+            menu.addItem(&make_info_item(
+                self.mtm,
+                "  💡 Check Linux firewall allows port 9420 (sudo ufw allow 9420/tcp)",
+            ));
+        }
 
         if let ConnectionPhase::Connected {
             addr, display_id, ..
@@ -480,7 +517,7 @@ impl TrayState {
                 );
                 menu.addItem(&disc_item);
             }
-            ConnectionPhase::Paused(_) => {
+            ConnectionPhase::Paused(_) | ConnectionPhase::Failed { .. } => {
                 let auto_item = make_action_item(
                     self.mtm,
                     "Resume Auto-Connect",
@@ -513,7 +550,17 @@ impl TrayState {
 
         menu.addItem(&NSMenuItem::separatorItem(self.mtm));
 
-        // 6. Quit
+        // 6. View Logs
+        let log_item = make_action_item(
+            self.mtm,
+            "View Logs…",
+            handler,
+            sel!(onOpenLogs:),
+            "",
+        );
+        menu.addItem(&log_item);
+
+        // 7. Quit
         let quit_item = make_action_item(
             self.mtm,
             "Quit TetherControl",
