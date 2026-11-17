@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="560" height="340" viewBox="0 0 560 340" role="img" aria-labelledby="title">
+  <title id="title">Diagram of a MacBook beside a macOS virtual display whose geometry comes from a Linux monitor</title>
+  <rect width="560" height="340" fill="#F4F1EA"/>
+
+  <text x="24" y="28" fill="#5F5F58" font-family="monospace" font-size="10">FIG. 1</text>
+
+  <!-- MacBook -->
+  <rect x="36" y="60" width="190" height="120" fill="none" stroke="#1C1C1A" stroke-width="1.5"/>
+  <text x="131" y="118" fill="#1C1C1A" font-family="sans-serif" font-size="14" text-anchor="middle">MacBook</text>
+  <text x="131" y="138" fill="#5F5F58" font-family="monospace" font-size="10" text-anchor="middle">macOS host</text>
+  <path d="M24 180 H238 L252 196 H10 Z" fill="none" stroke="#1C1C1A" stroke-width="1.5"/>
+
+  <!-- Virtual display -->
+  <rect x="330" y="50" width="196" height="140" fill="none" stroke="#1C1C1A" stroke-width="1.5"/>
+  <text x="428" y="96" fill="#1C1C1A" font-family="sans-serif" font-size="14" text-anchor="middle">Virtual display</text>
+  <text x="428" y="116" fill="#5F5F58" font-family="monospace" font-size="10" text-anchor="middle">macOS</text>
+  <text x="428" y="134" fill="#5F5F58" font-family="monospace" font-size="10" text-anchor="middle">geometry from Linux</text>
+  <path d="M428 190 V210 M396 210 H460" fill="none" stroke="#1C1C1A" stroke-width="1.5"/>
+
+  <!-- Boundary, the single accent in the diagram -->
+  <path d="M300 56 V196" fill="none" stroke="#B4461F" stroke-width="2" stroke-dasharray="4 4"/>
+  <text x="300" y="44" fill="#B4461F" font-family="monospace" font-size="10" text-anchor="middle">cursor crosses</text>
+
+  <!-- Network link -->
+  <path d="M131 196 V242 H428 V210" fill="none" stroke="#5F5F58" stroke-width="1"/>
+  <text x="280" y="262" fill="#5F5F58" font-family="monospace" font-size="10" text-anchor="middle">TCP 9420 / mDNS _tether-ctrl._tcp.local.</text>
+</svg>

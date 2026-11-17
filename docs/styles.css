@@ -1,0 +1,308 @@
+/* TetherControl: field manual direction. See ../DESIGN.md. */
+
+:root {
+  --paper: #F4F1EA;
+  --paper-tint: #EDE9DF;
+  --ink: #1C1C1A;
+  --graphite: #5F5F58;
+  --rule: #8C877C;
+  --signal: #B4461F;
+  --signal-dark: #9A3B19;
+  --wrap: 1080px;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: "IBM Plex Sans", system-ui, sans-serif;
+  font-size: clamp(15px, 0.4vw + 14px, 17px);
+  line-height: 1.6;
+}
+
+/* One base-layer affordance for every enabled control. */
+a, button { cursor: pointer; }
+a:active, button:active { color: var(--signal-dark); }
+
+:focus-visible {
+  outline: 2px solid var(--signal);
+  outline-offset: 3px;
+}
+
+.wrap {
+  width: min(var(--wrap), calc(100% - 40px));
+  margin-inline: auto;
+}
+
+.skip-link {
+  position: absolute;
+  left: 12px;
+  top: -60px;
+  z-index: 10;
+  padding: 10px 14px;
+  background: var(--ink);
+  color: var(--paper);
+  text-decoration: none;
+}
+.skip-link:focus { top: 12px; color: var(--paper); }
+
+/* Header */
+.site-header { border-bottom: 1px solid var(--rule); }
+.header-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 60px;
+}
+.wordmark {
+  font-weight: 600;
+  font-size: 1.05rem;
+  letter-spacing: -0.01em;
+  text-decoration: none;
+}
+.site-nav { display: flex; align-items: center; gap: 26px; }
+.site-nav a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  color: var(--ink);
+  font-size: 0.92rem;
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+}
+.site-nav a:hover,
+.site-nav a:active { border-bottom-color: var(--ink); }
+.menu-toggle {
+  display: none;
+  min-height: 44px;
+  padding: 0 14px;
+  font: inherit;
+  font-size: 0.92rem;
+  color: var(--ink);
+  background: transparent;
+  border: 1px solid var(--rule);
+  border-radius: 2px;
+}
+.menu-toggle:hover { border-color: var(--ink); }
+
+/* Intro */
+.intro { padding-block: clamp(48px, 7vw, 88px) clamp(44px, 6vw, 76px); }
+.intro-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: clamp(28px, 5vw, 56px);
+  align-items: start;
+}
+.intro-copy { max-width: 46ch; }
+h1 {
+  margin: 0 0 22px;
+  font-size: clamp(2.1rem, 3.6vw + 0.6rem, 3.3rem);
+  font-weight: 600;
+  line-height: 1.1;
+  letter-spacing: -0.025em;
+}
+.intro-copy p { margin: 0 0 16px; }
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 18px 24px;
+  margin-top: 28px !important;
+}
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 10px 18px;
+  border-radius: 2px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  text-decoration: none;
+  transition: background-color 120ms ease, border-color 120ms ease;
+}
+.button--primary {
+  color: #FFFFFF;
+  background: var(--signal);
+  border: 1px solid var(--signal);
+}
+.button--primary:hover,
+.button--primary:active { background: var(--signal-dark); border-color: var(--signal-dark); color: #FFFFFF; }
+.text-link {
+  color: var(--ink);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+.text-link:hover { color: var(--signal); }
+.requires {
+  margin-top: 28px !important;
+  padding-top: 14px;
+  border-top: 1px solid var(--rule);
+  color: var(--graphite);
+  font-size: 0.9rem;
+}
+
+.figure { margin: 0; min-width: 0; }
+.figure img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border: 1px solid var(--rule);
+}
+.figure figcaption {
+  margin-top: 10px;
+  color: var(--graphite);
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.72rem;
+  line-height: 1.5;
+}
+
+/* Sections */
+.section {
+  padding-block: clamp(48px, 6.5vw, 84px);
+  border-top: 1px solid var(--rule);
+}
+.section--tinted { background: var(--paper-tint); }
+.section h2 {
+  margin: 0 0 14px;
+  font-size: clamp(1.45rem, 1.4vw + 1rem, 1.95rem);
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -0.015em;
+}
+.section-intro { max-width: 58ch; margin: 0 0 34px; color: var(--graphite); }
+
+/* Setup */
+.setup-grid { display: grid; grid-template-columns: 1fr; gap: 36px; }
+.setup-block { min-width: 0; }
+.setup-block h3 {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin: 0 0 16px;
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+.step-no {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.82rem;
+  font-weight: 400;
+  color: var(--graphite);
+}
+.setup-block ol { margin: 0 0 20px; padding-left: 1.4rem; }
+.setup-block li { margin-bottom: 6px; }
+code {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.88em;
+}
+.code {
+  margin: 0;
+  padding: 16px;
+  overflow-x: auto;
+  background: var(--paper-tint);
+  border: 1px solid var(--rule);
+  border-radius: 0;
+  color: var(--ink);
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.8rem;
+  line-height: 1.7;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.section--tinted .code { background: var(--paper); }
+.note {
+  margin: 14px 0 0;
+  color: var(--graphite);
+  font-size: 0.88rem;
+}
+.callout {
+  margin: 36px 0 0;
+  padding-top: 16px;
+  border-top: 1px solid var(--rule);
+  color: var(--graphite);
+  font-size: 0.9rem;
+}
+
+/* Behavior */
+.behavior-grid { display: grid; grid-template-columns: 1fr; gap: 34px; }
+.behavior-head p { max-width: 46ch; color: var(--graphite); }
+.behavior-head .keymap { font-size: 0.9rem; }
+.behavior-list { margin: 0; }
+.behavior-row {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 2px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--rule);
+}
+.behavior-row:first-child { border-top: 1px solid var(--rule); }
+.behavior-row dt { font-weight: 500; }
+.behavior-row dd { margin: 0; color: var(--graphite); }
+
+/* Architecture */
+.arch-grid { display: grid; grid-template-columns: 1fr; gap: 34px; align-items: start; }
+.arch-grid p { max-width: 50ch; color: var(--graphite); }
+.tree { font-size: 0.78rem; line-height: 1.9; }
+
+/* Source and footer */
+.section--source { background: var(--paper-tint); }
+.source-inner { max-width: 720px; }
+.source-inner .code { background: var(--paper); }
+.source-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 26px;
+  margin: 18px 0 0;
+  font-size: 0.9rem;
+}
+.source-links span { color: var(--graphite); }
+.site-footer { border-top: 1px solid var(--rule); padding-block: 26px 34px; }
+.footer-inner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 10px 26px;
+  font-size: 0.85rem;
+  color: var(--graphite);
+}
+.footer-name { color: var(--ink); font-weight: 600; }
+.footer-inner .text-link { margin-left: auto; color: var(--ink); }
+
+/* Width states. Breakpoints follow the content, not device names. */
+@media (min-width: 640px) {
+  .setup-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 42px; }
+  .behavior-row { grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr); gap: 20px; }
+}
+
+@media (min-width: 880px) {
+  .intro-grid { grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr); }
+  .behavior-grid { grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); gap: 60px; }
+  .arch-grid { grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); gap: 60px; }
+}
+
+@media (max-width: 639px) {
+  .menu-toggle { display: inline-flex; }
+  .site-nav {
+    display: none;
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 100%;
+    z-index: 5;
+    padding: 8px 20px 16px;
+    background: var(--paper);
+    border-bottom: 1px solid var(--rule);
+  }
+  .site-nav.is-open { display: flex; flex-direction: column; align-items: stretch; gap: 0; }
+  .site-nav a { min-height: 48px; border-bottom: 1px solid var(--rule); }
+  .site-header { position: relative; }
+  .footer-inner .text-link { margin-left: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .button { transition: none; }
+}

@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>TetherControl: a Linux monitor for your MacBook</title>
+  <meta name="description" content="TetherControl presents a Linux physical display as a macOS virtual external display and forwards pointer, clicks, scroll and keys over the LAN." />
+  <meta name="theme-color" content="#F4F1EA" />
+  <link rel="icon" href="data:," />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+  <script src="script.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <header class="site-header">
+    <div class="wrap header-inner">
+      <a class="wordmark" href="#top">TetherControl</a>
+      <button class="menu-toggle" id="menuToggle" type="button" aria-expanded="false" aria-controls="siteNav">Menu</button>
+      <nav class="site-nav" id="siteNav" aria-label="Primary">
+        <a href="#setup">Setup</a>
+        <a href="#behavior">Behavior</a>
+        <a href="#architecture">Code layout</a>
+        <a href="#source">Source</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main">
+    <section class="intro" id="top">
+      <div class="wrap intro-grid">
+        <div class="intro-copy">
+          <h1>Use your Linux monitor as a Mac display.</h1>
+          <p>TetherControl runs on two machines. The Linux client reports its monitor geometry and accepts injected input. The macOS host creates a virtual display at that geometry and forwards your pointer, clicks, scroll and keys when the cursor crosses onto it.</p>
+          <p>The display is arranged in macOS like any other monitor. There is no remote desktop window to keep in focus.</p>
+          <p class="actions">
+            <a class="button button--primary" href="#setup">Read the setup steps</a>
+            <a class="text-link" href="https://github.com/catinbowl/tether-control">View source on GitHub</a>
+          </p>
+          <p class="requires">Requires macOS on the host, Linux on the client, both on the same LAN, and Rust to build.</p>
+        </div>
+
+        <figure class="figure">
+          <img src="diagram.svg" width="560" height="340" fetchpriority="high" alt="Diagram: a MacBook display beside a macOS virtual display. The Linux client shares the virtual display geometry and receives input when the cursor crosses the boundary between them." />
+          <figcaption>Figure 1. Display arrangement. This is a diagram, not a screenshot.</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <section class="section" id="setup">
+      <div class="wrap">
+        <h2>1. Set up both machines</h2>
+        <p class="section-intro">Build the same binary on each machine. The Linux client listens on TCP port 9420 and advertises itself over mDNS.</p>
+
+        <div class="setup-grid">
+          <article class="setup-block">
+            <h3><span class="step-no">01</span> Linux client, controlled machine</h3>
+            <ol>
+              <li>Build the release binary.</li>
+              <li>Allow <code>/dev/uinput</code> access once, then log out and back in.</li>
+              <li>Start the client.</li>
+            </ol>
+            <pre class="code"><code>cargo build --release
+
+sudo cp scripts/99-tether-uinput.rules /etc/udev/rules.d/
+echo "uinput" | sudo tee /etc/modules-load.d/uinput.conf
+sudo modprobe uinput
+sudo usermod -aG input "$USER"
+sudo udevadm control --reload-rules &amp;&amp; sudo udevadm trigger
+
+./target/release/tether-control client</code></pre>
+            <p class="note">Overrides: <code>--width</code>, <code>--height</code>, <code>--refresh</code>, <code>--name</code>, <code>--bind</code>, <code>--port</code>, <code>--token</code>, <code>--no-mdns</code>.</p>
+          </article>
+
+          <article class="setup-block">
+            <h3><span class="step-no">02</span> macOS host, controlling machine</h3>
+            <ol>
+              <li>Run the host from Cargo, or build a menu bar app.</li>
+              <li>Allow Accessibility access when macOS asks for it.</li>
+              <li>Arrange the Tether display in System Settings, Displays.</li>
+            </ol>
+            <pre class="code"><code>cargo run --release -- host
+
+./scripts/bundle-macos.sh
+open target/release/TetherControl.app</code></pre>
+            <p class="note">Connect directly with <code>--connect &lt;ip[:port]&gt;</code> if mDNS discovery fails. Use <code>--swap-cmd-ctrl</code> to swap Command and Control, and <code>--token</code> to match the client's shared secret.</p>
+          </article>
+        </div>
+
+        <p class="callout">Firewall: allow 9420/tcp and UDP 5353 if a local firewall blocks discovery or input.</p>
+      </div>
+    </section>
+
+    <section class="section section--tinted" id="behavior">
+      <div class="wrap behavior-grid">
+        <div class="behavior-head">
+          <h2>2. What happens at the edge</h2>
+          <p>The host taps events only while the pointer is inside the virtual display. Outside that rectangle, your Mac behaves normally.</p>
+          <p class="keymap">By default Control maps to Ctrl, Option maps to Alt and Command maps to Super.</p>
+        </div>
+        <dl class="behavior-list">
+          <div class="behavior-row">
+            <dt>Pointer on MacBook</dt>
+            <dd>No interception. Mac input stays local.</dd>
+          </div>
+          <div class="behavior-row">
+            <dt>Pointer enters the virtual display</dt>
+            <dd>The host sends absolute coordinates, button state, scroll deltas and key events to the Linux client. Mac input is suppressed.</dd>
+          </div>
+          <div class="behavior-row">
+            <dt>Pointer leaves the display</dt>
+            <dd>The host sends PointerLeave and stops tapping events.</dd>
+          </div>
+          <div class="behavior-row">
+            <dt>Linux geometry changes</dt>
+            <dd>The client sends DisplayChanged and the host resizes the virtual display.</dd>
+          </div>
+          <div class="behavior-row">
+            <dt>Connection drops</dt>
+            <dd>The host removes the virtual display and releases held input.</dd>
+          </div>
+          <div class="behavior-row">
+            <dt>Ctrl+Option+Command+Esc</dt>
+            <dd>Releases held keys and buttons and warps the pointer to the center of the MacBook display.</dd>
+          </div>
+        </dl>
+      </div>
+    </section>
+
+    <section class="section" id="architecture">
+      <div class="wrap arch-grid">
+        <div>
+          <h2>3. Code layout</h2>
+          <p>Modules are grouped by role, not by operating system. A Windows host or a macOS client can be added without reshaping the tree.</p>
+          <p>The wire protocol is a compact binary format with a handshake, an optional token proof, keepalive messages and release commands.</p>
+        </div>
+        <pre class="code tree"><code>src/
+  coords.rs        absolute coordinate mapping
+  discovery.rs     mDNS advertise and browse
+  keymap.rs        key and modifier translation
+  protocol.rs      binary messages and auth proof
+  host/macos/      virtual display, event tap, menu bar
+  client/linux/    display detection, uinput injection</code></pre>
+      </div>
+    </section>
+
+    <section class="section section--source" id="source">
+      <div class="wrap source-inner">
+        <h2>Get the code</h2>
+        <pre class="code"><code>git clone https://github.com/catinbowl/tether-control.git</code></pre>
+        <p class="source-links">
+          <a class="text-link" href="https://github.com/catinbowl/tether-control/blob/main/README.md">Full README</a>
+          <a class="text-link" href="https://github.com/catinbowl/tether-control/issues">Issues</a>
+          <span>MIT licensed</span>
+        </p>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap footer-inner">
+      <span class="footer-name">TetherControl</span>
+      <span>LAN display extension for a MacBook and a Linux PC.</span>
+      <a class="text-link" href="#top">Back to top</a>
+    </div>
+  </footer>
+</body>
+</html>
